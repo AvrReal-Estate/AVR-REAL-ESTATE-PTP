@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function Header(){const wa=process.env.NEXT_PUBLIC_WHATSAPP_NUMBER||"919999999999";return <header className="nav"><div className="container navinner"><Link href="/" className="brand">AVR <span>REAL ESTATE</span></Link><nav className="navlinks"><a href="/#properties">Properties</a><a href="/#about">About</a><a href="/#contact">Contact</a></nav><a className="btn gold" href={`https://wa.me/${wa}`} target="_blank">WhatsApp</a></div></header>}

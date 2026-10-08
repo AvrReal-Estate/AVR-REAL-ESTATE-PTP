@@ -1,0 +1,18 @@
+create extension if not exists pgcrypto;
+create table if not exists public.properties(id uuid primary key default gen_random_uuid(),title text not null,slug text unique not null,type text not null,price_lakh numeric(12,2) not null,area_sqft integer not null,location text not null default 'Puttaparthi',floor text,facing text,bedrooms integer,bathrooms integer,balconies integer,parking text,description text,images text[] not null default '{}',featured boolean not null default false,status text not null default 'published' check(status in('published','draft','sold')),created_at timestamptz not null default now(),updated_at timestamptz not null default now());
+create table if not exists public.admin_users(id uuid primary key references auth.users(id) on delete cascade,created_at timestamptz not null default now());
+create table if not exists public.enquiries(id uuid primary key default gen_random_uuid(),property_id uuid references public.properties(id) on delete set null,name text not null,phone text not null,message text,created_at timestamptz not null default now());
+alter table public.properties enable row level security;alter table public.admin_users enable row level security;alter table public.enquiries enable row level security;
+create or replace function public.is_admin() returns boolean language sql security definer set search_path=public stable as $$select exists(select 1 from public.admin_users where id=auth.uid());$$;
+drop policy if exists "public read published" on public.properties;create policy "public read published" on public.properties for select using(status='published' or public.is_admin());
+drop policy if exists "admin insert" on public.properties;create policy "admin insert" on public.properties for insert with check(public.is_admin());
+drop policy if exists "admin update" on public.properties;create policy "admin update" on public.properties for update using(public.is_admin()) with check(public.is_admin());
+drop policy if exists "admin delete" on public.properties;create policy "admin delete" on public.properties for delete using(public.is_admin());
+drop policy if exists "admin read users" on public.admin_users;create policy "admin read users" on public.admin_users for select using(public.is_admin());
+drop policy if exists "public submit enquiries" on public.enquiries;create policy "public submit enquiries" on public.enquiries for insert with check(true);
+drop policy if exists "admin read enquiries" on public.enquiries;create policy "admin read enquiries" on public.enquiries for select using(public.is_admin());
+insert into storage.buckets(id,name,public) values('property-media','property-media',true) on conflict(id) do update set public=true;
+drop policy if exists "public read media" on storage.objects;create policy "public read media" on storage.objects for select using(bucket_id='property-media');
+drop policy if exists "admin upload media" on storage.objects;create policy "admin upload media" on storage.objects for insert with check(bucket_id='property-media' and public.is_admin());
+drop policy if exists "admin update media" on storage.objects;create policy "admin update media" on storage.objects for update using(bucket_id='property-media' and public.is_admin());
+drop policy if exists "admin delete media" on storage.objects;create policy "admin delete media" on storage.objects for delete using(bucket_id='property-media' and public.is_admin());
